@@ -1,14 +1,11 @@
 package client
 
 import (
-	"bufio"
 	"fmt"
 	"log"
 	"net"
-	"strings"
-	"time"
 
-	"github.com/jatin-malik/copy-here-paste-there/config"
+	"github.com/jatin-malik/copy-here-paste-there/wire"
 )
 
 func Start(host string, port int) {
@@ -19,40 +16,6 @@ func Start(host string, port int) {
 	}
 	defer conn.Close()
 
-	go readFromServer(conn)
-	writeToServer(conn)
-}
-
-func writeToServer(conn net.Conn) {
-	var prev_output string
-	for {
-		output := config.Cboard.Read()
-		if output != prev_output {
-			// state changed, send it
-			fmt.Println("Sending:", output)
-			if _, err := conn.Write([]byte(output + "\n")); err != nil {
-				log.Fatal(err)
-			}
-			prev_output = output
-		}
-
-		time.Sleep(2 * time.Second)
-
-	}
-}
-
-func readFromServer(conn net.Conn) {
-	reader := bufio.NewReader(conn)
-	for {
-		message, err := reader.ReadString('\n')
-		if err != nil {
-			fmt.Println("Server disconnected:", err)
-			return
-		}
-		message = strings.TrimSpace(message)
-		fmt.Println("Received from server:", message)
-
-		// Write to system clipboard
-		config.Cboard.Write(message)
-	}
+	go wire.ReadFromConnection(conn, "server")
+	wire.WriteToConnection(conn, "server")
 }
