@@ -2,9 +2,11 @@ package wire
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
+	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net"
 	"time"
 
@@ -51,28 +53,34 @@ func decodeFromWire(conn net.Conn) (string, error) {
 	return string(messageBytes), nil
 }
 
-func WriteToConnection(conn net.Conn, to string) {
+func WriteToConnection(ctx context.Context, conn net.Conn, to string) {
 	var prev_output string
 	for {
-		output := config.Cboard.Read()
-		if output != prev_output {
+		select {
+		case <-ctx.Done():
+			slog.Debug("Context cancelled, stopping write loop.")
+			return
+		default:
+			output := config.Cboard.Read()
+			if output != prev_output {
 
-			// state changed, send it
+				// state changed, send it
 
-			message, err := encodeToWire(output)
-			if err != nil {
-				log.Println("error while encoding message:", err)
-				continue
+				message, err := encodeToWire(output)
+				if err != nil {
+					slog.Error(fmt.Sprintf("error while encoding message: %s", err))
+					continue
+				}
+				slog.Debug(fmt.Sprintf("Sending to %s:%s", to, output))
+				if _, err := conn.Write(message); err != nil {
+					slog.Error(fmt.Sprintf("error while sending message: %v", err))
+					return
+				}
+				prev_output = output
 			}
-			log.Printf("Sending to %s:%s", to, string(message))
-			if _, err := conn.Write(message); err != nil {
-				log.Fatal(err)
-			}
-			prev_output = output
+
+			time.Sleep(2 * time.Second)
 		}
-
-		time.Sleep(2 * time.Second)
-
 	}
 }
 
@@ -80,11 +88,11 @@ func ReadFromConnection(conn net.Conn, from string) {
 	for {
 		message, err := decodeFromWire(conn)
 		if err != nil {
-			log.Println("Error reading from server:", err)
+			slog.Error(fmt.Sprintf("Error reading from %s: %s", from, err))
 			return
 		}
 
-		log.Printf("Received from %s:%s", from, message)
+		slog.Debug(fmt.Sprintf("Received from %s:%s", from, message))
 
 		// Write to system clipboard
 		config.Cboard.Write(message)

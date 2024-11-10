@@ -1,21 +1,25 @@
 package client
 
 import (
+	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net"
+	"os"
 
 	"github.com/jatin-malik/copy-here-paste-there/wire"
 )
 
 func Start(host string, port int) {
-	log.Printf("Connecting to tcp server at (%s:%d)\n", host, port)
+	slog.Info(fmt.Sprintf("Connecting to tcp server at (%s:%d)\n", host, port))
 	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
-		log.Fatalf("Failed to dial: %v", err)
+		slog.Error(fmt.Sprintf("Failed to dial: %v", err))
+		os.Exit(1)
 	}
 	defer conn.Close()
 
-	go wire.ReadFromConnection(conn, "server")
-	wire.WriteToConnection(conn, "server")
+	go wire.WriteToConnection(context.Background(), conn, "server")
+	wire.ReadFromConnection(conn, "server")
+
 }
