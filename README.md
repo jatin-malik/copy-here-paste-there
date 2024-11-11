@@ -44,7 +44,7 @@ en0: flags=8863<UP,BROADCAST,SMART,RUNNING,SIMPLEX,MULTICAST> mtu 1500
 
 ### Over internet
 
-If you are communicating over internet and do not have a public IP address, you can use something like `ngrok` to put your localhost online.
+If you are communicating over internet and do not have a public IP address, you can use something like [ngrok](https://download.ngrok.com/mac-os) to put your localhost online.
 
 ```
 ngrok tcp 8080
@@ -62,7 +62,7 @@ copy-here-paste-there -mode client -host "0.tcp.in.ngrok.io" -port 10549 -log de
 
 ## Internals
 
-We do communication over TCP. Once the TCP connection is established between the client and server, it allows for bi-directional streaming of your system clipboard/pasteboard.
+Communication is done over TCP. Once the TCP connection is established between the client and server, it allows for bi-directional streaming of your system clipboard/pasteboard.
 A watcher periodically ( every 2 seconds ) checks the system clipboard for any state change and if it observes a state update, it streams that over to the peer using a length-prefixed TCP message.
 
 
